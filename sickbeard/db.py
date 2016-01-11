@@ -28,8 +28,9 @@ import re
 import shutil
 import sqlite3
 import threading
-import time
 from contextlib import contextmanager
+
+from tornado import gen
 
 import sickbeard
 from helpers import moveFile
@@ -90,18 +91,25 @@ class DBConnection(object):
             while attempt < 5:
                 try:
                     if isinstance(query, list):
-                        result = [cursor.execute((x[0]), (x[0], x[1])[len(x) > 1], **kwargs) for x in query if x]
+                        result = [cursor.execute((x[0]), (x[0], x[1])[len(x) > 1]) for x in query if x]
                     else:
-                        result = cursor.execute(query, *args)
+                        try:
+                            result = cursor.execute(query, *args)
+                        except:
+                            result = cursor.execute(query)
 
                     if result and kwargs.has_key('fetchall'):
+                        if isinstance(result, list):
+                            return [x.fetchall() for x in result]
                         return result.fetchall()
                     elif result and kwargs.has_key('fetchone'):
+                        if isinstance(result, list):
+                            return [x.fetchone() for x in result]
                         return result.fetchone()
                     return result
                 except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
                     logging.error("DB error: {}".format(e))
-                    time.sleep(1)
+                    gen.sleep(1)
                     attempt += 1
 
                     try:
@@ -404,7 +412,7 @@ def restoreVersionedFile(backup_file, version):
         except Exception as e:
             logging.warning("Error while trying to restore file %s. Error: %r" % (restore_file, e))
             numTries += 1
-            time.sleep(1)
+            gen.sleep(1)
             logging.debug("Trying again. Attempt #: %s" % numTries)
 
         if numTries >= 10:
