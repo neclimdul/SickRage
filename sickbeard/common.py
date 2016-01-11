@@ -381,6 +381,7 @@ class Quality(object):
         from hachoir_parser import guessParser
         from hachoir_metadata import extractMetadata
         from hachoir_core import config as hachoir_config
+        import helpers
         hachoir_config.quiet = True
 
         if os.path.isfile(filename):
